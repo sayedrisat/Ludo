@@ -32,6 +32,8 @@ function startGame() {
   setupPlayers(numPlayers, config);
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('game-screen').style.display = 'block';
+  boardState = initializeBoard();
+  tokenPositions = initializeTokenPositions();
   drawBoard();
 }
 
