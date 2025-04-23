@@ -2,6 +2,10 @@ let players = [];
 let currentPlayerIndex = 0;
 let diceResult = 0;
 let gameState = 'setup';
+let consecutiveSixes = 0;
+let rollQueue = [];
+let moveQueue = [];
+let rankings = [];
 
 function setupPlayers(numPlayers, config) {
   players = [];
@@ -11,48 +15,83 @@ function setupPlayers(numPlayers, config) {
       color: colors[i],
       type: type,
       tokens: [0, 1, 2, 3],
-      homeTokens: 0
+      homeTokens: 0,
+      rank: null
     });
   });
   gameState = 'playing';
   currentPlayerIndex = 0;
+  consecutiveSixes = 0;
+  rollQueue = [];
+  moveQueue = [];
+  rankings = [];
   updateTurn();
 }
 
 function rollDice() {
   document.getElementById('dice-result').textContent = '🎲';
   document.getElementById('dice-result').classList.add('rolling');
+  document.getElementById('roll-dice').disabled = true;
   setTimeout(() => {
     diceResult = Math.floor(Math.random() * 6) + 1;
     document.getElementById('dice-result').textContent = diceResult;
     document.getElementById('dice-result').classList.remove('rolling');
+    rollQueue.push(diceResult);
+    if (diceResult === 6) {
+      consecutiveSixes++;
+      if (consecutiveSixes === 3) {
+        rollQueue = rollQueue.slice(0, -3);
+        consecutiveSixes = 0;
+      } else {
+        document.getElementById('roll-dice').disabled = false;
+        return;
+      }
+    } else {
+      consecutiveSixes = 0;
+    }
+    moveQueue = [...rollQueue];
+    rollQueue = [];
     checkValidMoves();
   }, 1000);
 }
 
 function checkValidMoves() {
+  if (moveQueue.length === 0) {
+    setTimeout(nextTurn, 500);
+    return;
+  }
+
   const player = players[currentPlayerIndex];
   const validTokens = [];
 
-  player.tokens.forEach(token => {
-    if (boardState[player.color].home.includes(token)) {
-      if (diceResult === 6) validTokens.push(token);
-    } else {
-      const pathToken = boardState[player.color].path.find(t => t.token === token);
-      const homePathToken = boardState[player.color].homePath.find(t => t.token === token);
-      if (pathToken) {
-        const newIndex = pathToken.index + diceResult;
-        if (newIndex < 51) {
-          validTokens.push(token);
-        } else if (newIndex <= 56) {
-          validTokens.push(token); // Can enter home path
+  const canUnlock = boardState[player.color].locked.length > 0 && moveQueue[0] === 6;
+  const allUnlocked = boardState[player.color].locked.length === 0;
+
+  if (canUnlock) {
+    boardState[player.color].locked.forEach(token => {
+      validTokens.push(token);
+    });
+  } else if (allUnlocked) {
+    player.tokens.forEach(token => {
+      if (boardState[player.color].home.includes(token)) {
+        // Token is still in home but unlocked
+      } else {
+        const pathToken = boardState[player.color].path.find(t => t.token === token);
+        const homePathToken = boardState[player.color].homePath.find(t => t.token === token);
+        if (pathToken) {
+          const newIndex = pathToken.index + moveQueue[0];
+          if (newIndex < 51) {
+            validTokens.push(token);
+          } else if (newIndex <= 56) {
+            validTokens.push(token);
+          }
+        } else if (homePathToken) {
+          const newIndex = homePathToken.index + moveQueue[0];
+          if (newIndex <= 5) validTokens.push(token);
         }
-      } else if (homePathToken) {
-        const newIndex = homePathToken.index + diceResult;
-        if (newIndex <= 5) validTokens.push(token);
       }
-    }
-  });
+    });
+  }
 
   if (validTokens.length === 0) {
     setTimeout(nextTurn, 500);
@@ -65,18 +104,20 @@ function checkValidMoves() {
 
 function moveToken(player, token) {
   const color = player.color;
+  const steps = moveQueue.shift();
   let moved = false;
 
-  if (boardState[color].home.includes(token) && diceResult === 6) {
+  if (boardState[color].locked.includes(token) && steps === 6) {
+    boardState[color].locked = boardState[color].locked.filter(t => t !== token);
     boardState[color].home = boardState[color].home.filter(t => t !== token);
     boardState[color].path.push({ token, index: 0 });
     moved = true;
-  } else {
+  } else if (boardState[color].locked.length === 0) {
     let pathToken = boardState[color].path.find(t => t.token === token);
     let homePathToken = boardState[color].homePath.find(t => t.token === token);
 
     if (pathToken) {
-      const newIndex = pathToken.index + diceResult;
+      const newIndex = pathToken.index + steps;
       if (newIndex < 51) {
         pathToken.index = newIndex;
         checkForCut(newIndex, color);
@@ -88,7 +129,7 @@ function moveToken(player, token) {
         moved = true;
       }
     } else if (homePathToken) {
-      const newIndex = homePathToken.index + diceResult;
+      const newIndex = homePathToken.index + steps;
       if (newIndex < 5) {
         homePathToken.index = newIndex;
         moved = true;
@@ -103,24 +144,26 @@ function moveToken(player, token) {
 
   if (moved) {
     tokenPositions[color][token].moving = true;
-    tokenPositions[color][token].stepsLeft = 10; // Animation steps
+    tokenPositions[color][token].stepsLeft = 10;
     drawBoard();
   }
 
-  if (diceResult !== 6 || gameState === 'ended') {
+  if (moveQueue.length === 0) {
     setTimeout(nextTurn, 500);
   } else {
-    updateTurn();
+    checkValidMoves();
   }
 }
 
 function checkForCut(index, color) {
+  if (safeZones.includes(index)) return;
   players.forEach(p => {
-    if (p.color !== color && !safeZones.includes(index)) {
+    if (p.color !== color) {
       const pathToken = boardState[p.color].path.find(t => t.index === index);
       if (pathToken) {
         boardState[p.color].path = boardState[p.color].path.filter(t => t.token !== pathToken.token);
         boardState[p.color].home.push(pathToken.token);
+        boardState[p.color].locked.push(pathToken.token);
         alert('Cut!');
       }
     }
@@ -129,24 +172,42 @@ function checkForCut(index, color) {
 
 function checkWin(player) {
   if (player.homeTokens === 4) {
-    gameState = 'ended';
-    alert(`${player.color.charAt(0).toUpperCase() + player.color.slice(1)} Player (${player.type}) Won!`);
-    document.getElementById('game-screen').style.display = 'none';
-    document.getElementById('setup-screen').style.display = 'block';
+    if (!player.rank) {
+      player.rank = rankings.length + 1;
+      rankings.push(player);
+      alert(`${player.color.charAt(0).toUpperCase() + player.color.slice(1)} Player (${player.type}) is ${player.rank}${getOrdinalSuffix(player.rank)}!`);
+    }
+    if (rankings.length === players.length - 1) {
+      gameState = 'ended';
+      document.getElementById('game-screen').style.display = 'none';
+      document.getElementById('setup-screen').style.display = 'block';
+    }
   }
 }
 
+function getOrdinalSuffix(rank) {
+  if (rank % 10 === 1 && rank !== 11) return 'st';
+  if (rank % 10 === 2 && rank !== 12) return 'nd';
+  if (rank % 10 === 3 && rank !== 13) return 'rd';
+  return 'th';
+}
+
 function nextTurn() {
-  currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+  do {
+    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+  } while (players[currentPlayerIndex].rank);
   updateTurn();
 }
 
 function updateTurn() {
+  if (gameState !== 'playing') return;
   const player = players[currentPlayerIndex];
   document.getElementById('current-player').textContent = `${player.color.charAt(0).toUpperCase() + player.color.slice(1)} Player (${player.type})`;
   document.getElementById('roll-dice').disabled = player.type === 'ai';
   if (player.type === 'ai') {
     setTimeout(() => rollDice(), 1000);
+  } else {
+    document.getElementById('roll-dice').disabled = false;
   }
 }
 
@@ -176,7 +237,7 @@ function highlightMovableTokens(tokens, color) {
           pos = { x: pos.x * cellSize + cellSize / 2, y: pos.y * cellSize + cellSize / 2 };
         }
       }
-      if (pos && Math.hypot(x - pos.x, y - pos.y) < cellSize / 3) {
+      if (pos && Math.hypot(x - pos.x, y - pos.y) < cellSize / 2) {
         moveToken(players[currentPlayerIndex], token);
         canvas.removeEventListener('click', handler);
       }
