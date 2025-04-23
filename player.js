@@ -10,7 +10,7 @@ function setupPlayers(numPlayers, config) {
     players.push({
       color: colors[i],
       type: type,
-      tokens: [0, 1, 2, 3], // Indices in boardState[color].home
+      tokens: [0, 1, 2, 3],
       homeTokens: 0
     });
   });
@@ -20,13 +20,14 @@ function setupPlayers(numPlayers, config) {
 }
 
 function rollDice() {
-  diceResult = Math.floor(Math.random() * 6) + 1;
-  document.getElementById('dice-result').textContent = `Dice: ${diceResult}`;
+  document.getElementById('dice-result').textContent = '🎲';
   document.getElementById('dice-result').classList.add('rolling');
   setTimeout(() => {
+    diceResult = Math.floor(Math.random() * 6) + 1;
+    document.getElementById('dice-result').textContent = diceResult;
     document.getElementById('dice-result').classList.remove('rolling');
     checkValidMoves();
-  }, 500);
+  }, 1000);
 }
 
 function checkValidMoves() {
@@ -37,15 +38,24 @@ function checkValidMoves() {
     if (boardState[player.color].home.includes(token)) {
       if (diceResult === 6) validTokens.push(token);
     } else {
-      const index = boardState[player.color].path.find(t => t.token === token)?.index;
-      if (index !== undefined && index + diceResult <= 52) {
-        validTokens.push(token);
+      const pathToken = boardState[player.color].path.find(t => t.token === token);
+      const homePathToken = boardState[player.color].homePath.find(t => t.token === token);
+      if (pathToken) {
+        const newIndex = pathToken.index + diceResult;
+        if (newIndex < 51) {
+          validTokens.push(token);
+        } else if (newIndex <= 56) {
+          validTokens.push(token); // Can enter home path
+        }
+      } else if (homePathToken) {
+        const newIndex = homePathToken.index + diceResult;
+        if (newIndex <= 5) validTokens.push(token);
       }
     }
   });
 
   if (validTokens.length === 0) {
-    nextTurn();
+    setTimeout(nextTurn, 500);
   } else if (player.type === 'ai') {
     setTimeout(() => aiMove(player, validTokens), 1000);
   } else {
@@ -55,26 +65,50 @@ function checkValidMoves() {
 
 function moveToken(player, token) {
   const color = player.color;
+  let moved = false;
+
   if (boardState[color].home.includes(token) && diceResult === 6) {
     boardState[color].home = boardState[color].home.filter(t => t !== token);
-    boardState[color].path.push({ token, index: getStartIndex(color) });
+    boardState[color].path.push({ token, index: 0 });
+    moved = true;
   } else {
-    const pathToken = boardState[color].path.find(t => t.token === token);
+    let pathToken = boardState[color].path.find(t => t.token === token);
+    let homePathToken = boardState[color].homePath.find(t => t.token === token);
+
     if (pathToken) {
       const newIndex = pathToken.index + diceResult;
-      if (newIndex < 52) {
+      if (newIndex < 51) {
         pathToken.index = newIndex;
         checkForCut(newIndex, color);
-      } else if (newIndex === 52) {
+        moved = true;
+      } else if (newIndex <= 56) {
         boardState[color].path = boardState[color].path.filter(t => t.token !== token);
+        const homeIndex = newIndex - 51;
+        boardState[color].homePath.push({ token, index: homeIndex });
+        moved = true;
+      }
+    } else if (homePathToken) {
+      const newIndex = homePathToken.index + diceResult;
+      if (newIndex < 5) {
+        homePathToken.index = newIndex;
+        moved = true;
+      } else if (newIndex === 5) {
+        boardState[color].homePath = boardState[color].homePath.filter(t => t.token !== token);
         player.homeTokens++;
         checkWin(player);
+        moved = true;
       }
     }
   }
-  drawBoard();
+
+  if (moved) {
+    tokenPositions[color][token].moving = true;
+    tokenPositions[color][token].stepsLeft = 10; // Animation steps
+    drawBoard();
+  }
+
   if (diceResult !== 6 || gameState === 'ended') {
-    nextTurn();
+    setTimeout(nextTurn, 500);
   } else {
     updateTurn();
   }
@@ -83,10 +117,10 @@ function moveToken(player, token) {
 function checkForCut(index, color) {
   players.forEach(p => {
     if (p.color !== color && !safeZones.includes(index)) {
-      const cutToken = p.path.find(t => t.index === index);
-      if (cutToken) {
-        p.path = p.path.filter(t => t.token !== cutToken.token);
-        boardState[p.color].home.push(cutToken.token);
+      const pathToken = boardState[p.color].path.find(t => t.index === index);
+      if (pathToken) {
+        boardState[p.color].path = boardState[p.color].path.filter(t => t.token !== pathToken.token);
+        boardState[p.color].home.push(pathToken.token);
         alert('Cut!');
       }
     }
@@ -116,10 +150,6 @@ function updateTurn() {
   }
 }
 
-function getStartIndex(color) {
-  return { red: 0, green: 13, yellow: 26, blue: 39 }[color];
-}
-
 function highlightMovableTokens(tokens, color) {
   canvas.addEventListener('click', function handler(e) {
     const rect = canvas.getBoundingClientRect();
@@ -137,10 +167,16 @@ function highlightMovableTokens(tokens, color) {
         pos = { x: tx * cellSize + cellSize / 2, y: ty * cellSize + cellSize / 2 };
       } else {
         const pathToken = boardState[color].path.find(t => t.token === token);
-        pos = getPathPosition(pathToken.index);
-        pos = { x: pos.x * cellSize + cellSize / 2, y: pos.y * cellSize + cellSize / 2 };
+        const homePathToken = boardState[color].homePath.find(t => t.token === token);
+        if (pathToken) {
+          pos = getPathPosition(pathToken.index, color);
+          pos = { x: pos.x * cellSize + cellSize / 2, y: pos.y * cellSize + cellSize / 2 };
+        } else if (homePathToken) {
+          pos = getHomePathPosition(homePathToken.index, color);
+          pos = { x: pos.x * cellSize + cellSize / 2, y: pos.y * cellSize + cellSize / 2 };
+        }
       }
-      if (Math.hypot(x - pos.x, y - pos.y) < cellSize / 3) {
+      if (pos && Math.hypot(x - pos.x, y - pos.y) < cellSize / 3) {
         moveToken(players[currentPlayerIndex], token);
         canvas.removeEventListener('click', handler);
       }
