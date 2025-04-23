@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real Lodu by Sayed Risat</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="game-container">
+    <!-- Game Setup Screen -->
+    <div id="setup-screen">
+      <h1>Real Lodu by Sayed Risat</h1>
+      <div id="setup-options">
+        <label for="num-players">Number of Players:</label>
+        <select id="num-players">
+          <option value="2">2 Players</option>
+          <option value="3">3 Players</option>
+          <option value="4">4 Players</option>
+        </select>
+        <div id="player-config">
+          <!-- Dynamically populated -->
+        </div>
+        <button id="start-game">Start Game</button>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" style="display: none;">
+      <h1>Real Lodu by Sayed Risat</h1>
+      <div id="board-container">
+        <canvas id="ludo-board" width="600" height="600"></canvas>
+      </div>
+      <div id="sidebar">
+        <div id="turn-indicator">Current Turn: <span id="current-player"></span></div>
+        <button id="roll-dice">Roll Dice</button>
+        <div id="dice-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="board.js"></script>
+  <script src="player.js"></script>
+  <script src="ai.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>
