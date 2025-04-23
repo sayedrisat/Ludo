@@ -1,0 +1,123 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #f0f0f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+#game-container {
+  text-align: center;
+  max-width: 800px;
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+h1 {
+  font-size: 2.5em;
+  color: #333;
+  margin-bottom: 20px;
+  font-family: 'Georgia', serif;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#setup-screen, #game-screen {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#setup-options {
+  margin: 20px 0;
+}
+
+#setup-options select, #setup-options button {
+  padding: 10px;
+  margin: 10px;
+  font-size: 1em;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#player-config div {
+  margin: 10px 0;
+}
+
+#ludo-board {
+  display: block;
+  margin: 0 auto;
+  border: 2px solid #333;
+  border-radius: 10px;
+}
+
+#sidebar {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#roll-dice {
+  padding: 15px 30px;
+  font-size: 1.2em;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+#roll-dice:hover {
+  background-color: #218838;
+}
+
+#roll-dice:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+#dice-result {
+  margin-top: 20px;
+  font-size: 1.5em;
+  color: #333;
+}
+
+#dice-result.rolling {
+  animation: spin 0.5s linear infinite;
+}
+
+#turn-indicator {
+  font-size: 1.2em;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 600px) {
+  h1 {
+    font-size: 1.8em;
+  }
+
+  #ludo-board {
+    width: 100%;
+    height: auto;
+  }
+
+  #roll-dice {
+    padding: 10px 20px;
+    font-size: 1em;
+  }
+
+  #sidebar {
+    flex-direction: column;
+  }
+}
