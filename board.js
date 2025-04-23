@@ -3,17 +3,17 @@ const ctx = canvas.getContext('2d');
 const boardSize = 600;
 const cellSize = boardSize / 15;
 const colors = { red: '#ff0000', green: '#00ff00', yellow: '#ffff00', blue: '#0000ff' };
-const safeZones = [8, 13, 21, 26, 34, 39, 47, 52]; // Safe zone indices on the path
+const safeZones = [0, 13, 26, 39]; // Starting squares (marked with stars)
 
 let boardState = initializeBoard();
 let tokenPositions = initializeTokenPositions();
 
 function initializeBoard() {
   const board = {
-    red: { home: [0, 1, 2, 3], path: [], homePath: [] },
-    green: { home: [0, 1, 2, 3], path: [], homePath: [] },
-    yellow: { home: [0, 1, 2, 3], path: [], homePath: [] },
-    blue: { home: [0, 1, 2, 3], path: [], homePath: [] },
+    red: { home: [0, 1, 2, 3], path: [], homePath: [], locked: [0, 1, 2, 3] },
+    green: { home: [0, 1, 2, 3], path: [], homePath: [], locked: [0, 1, 2, 3] },
+    yellow: { home: [0, 1, 2, 3], path: [], homePath: [], locked: [0, 1, 2, 3] },
+    blue: { home: [0, 1, 2, 3], path: [], homePath: [], locked: [0, 1, 2, 3] },
     path: Array(52).fill(null) // Main path (0-51)
   };
   return board;
@@ -47,20 +47,36 @@ function drawBoard() {
 
   // Draw main path
   const path = [];
-  for (let i = 0; i < 13; i++) path.push({ x: 6, y: i }); // Down (red start)
-  for (let i = 0; i < 6; i++) path.push({ x: 7 + i, y: 12 }); // Right
-  for (let i = 0; i < 13; i++) path.push({ x: 12, y: 12 - i }); // Up (green start)
-  for (let i = 0; i < 6; i++) path.push({ x: 11 - i, y: 0 }); // Left
-  for (let i = 0; i < 13; i++) path.push({ x: 6, y: i }); // Down (yellow start)
-  for (let i = 0; i < 6; i++) path.push({ x: 5 - i, y: 12 }); // Left
-  for (let i = 0; i < 13; i++) path.push({ x: 0, y: 12 - i }); // Up (blue start)
-  for (let i = 0; i < 6; i++) path.push({ x: 1 + i, y: 0 }); // Right
+  for (let i = 0; i < 2; i++) path.push({ x: 6, y: i }); // Red start
+  for (let i = 0; i < 6; i++) path.push({ x: 6 + i, y: 2 }); // Right
+  for (let i = 0; i < 2; i++) path.push({ x: 12, y: 2 + i }); // Down
+  for (let i = 0; i < 6; i++) path.push({ x: 12, y: 4 + i }); // Down (Green start)
+  for (let i = 0; i < 2; i++) path.push({ x: 12, y: 10 + i }); // Down
+  for (let i = 0; i < 6; i++) path.push({ x: 11 - i, y: 12 }); // Left
+  for (let i = 0; i < 2; i++) path.push({ x: 5 - i, y: 12 }); // Left
+  for (let i = 0; i < 6; i++) path.push({ x: 4, y: 11 - i }); // Up (Yellow start)
+  for (let i = 0; i < 2; i++) path.push({ x: 4, y: 5 - i }); // Up
+  for (let i = 0; i < 6; i++) path.push({ x: 5 + i, y: 4 }); // Right
+  for (let i = 0; i < 2; i++) path.push({ x: 11 + i, y: 4 }); // Right
+  for (let i = 0; i < 6; i++) path.push({ x: 13, y: 5 + i }); // Down (Blue start)
+  for (let i = 0; i < 2; i++) path.push({ x: 13, y: 11 + i }); // Down
+  for (let i = 0; i < 6; i++) path.push({ x: 12 - i, y: 13 }); // Left
+  for (let i = 0; i < 2; i++) path.push({ x: 6 - i, y: 13 }); // Left
+  for (let i = 0; i < 6; i++) path.push({ x: 5, y: 12 - i }); // Up
+  for (let i = 0; i < 2; i++) path.push({ x: 5, y: 6 - i }); // Up
 
   path.forEach((pos, i) => {
     ctx.fillStyle = safeZones.includes(i) ? '#ddd' : '#fff';
     ctx.fillRect(pos.x * cellSize, pos.y * cellSize, cellSize, cellSize);
     ctx.strokeStyle = '#000';
     ctx.strokeRect(pos.x * cellSize, pos.y * cellSize, cellSize, cellSize);
+    if (safeZones.includes(i)) {
+      ctx.fillStyle = '#000';
+      ctx.font = `${cellSize / 2}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('★', pos.x * cellSize + cellSize / 2, pos.y * cellSize + cellSize / 2);
+    }
   });
 
   // Draw home paths
@@ -86,7 +102,7 @@ function drawHomeSquare(x, y, color) {
       ctx.arc(
         x + (2 + i * 2) * cellSize,
         y + (2 + j * 2) * cellSize,
-        cellSize / 2,
+        cellSize,
         0,
         Math.PI * 2
       );
@@ -113,11 +129,38 @@ function drawHomePath(x, y, color, direction) {
 }
 
 function drawCenterHome() {
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = colors.red;
   ctx.beginPath();
   ctx.moveTo(6 * cellSize, 6 * cellSize);
-  ctx.lineTo(9 * cellSize, 6 * cellSize);
-  ctx.lineTo(7.5 * cellSize, 9 * cellSize);
+  ctx.lineTo(7 * cellSize, 7 * cellSize);
+  ctx.lineTo(6 * cellSize, 7 * cellSize);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = colors.green;
+  ctx.beginPath();
+  ctx.moveTo(7 * cellSize, 7 * cellSize);
+  ctx.lineTo(8 * cellSize, 6 * cellSize);
+  ctx.lineTo(8 * cellSize, 7 * cellSize);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = colors.yellow;
+  ctx.beginPath();
+  ctx.moveTo(7 * cellSize, 7 * cellSize);
+  ctx.lineTo(8 * cellSize, 8 * cellSize);
+  ctx.lineTo(7 * cellSize, 8 * cellSize);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = colors.blue;
+  ctx.beginPath();
+  ctx.moveTo(7 * cellSize, 7 * cellSize);
+  ctx.lineTo(6 * cellSize, 8 * cellSize);
+  ctx.lineTo(7 * cellSize, 8 * cellSize);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
@@ -134,7 +177,7 @@ function drawTokens() {
       else { x = 11 + (i % 2) * 2; y = 11 + Math.floor(i / 2) * 2; }
       tokenPositions[color][token].x = x * cellSize + cellSize / 2;
       tokenPositions[color][token].y = y * cellSize + cellSize / 2;
-      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color]);
+      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], boardState[color].locked.includes(token));
     });
 
     // Draw tokens on path
@@ -146,7 +189,7 @@ function drawTokens() {
         tokenPositions[color][token].x = tokenPositions[color][token].targetX;
         tokenPositions[color][token].y = tokenPositions[color][token].targetY;
       }
-      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color]);
+      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], false);
     });
 
     // Draw tokens in home path
@@ -158,7 +201,7 @@ function drawTokens() {
         tokenPositions[color][token].x = tokenPositions[color][token].targetX;
         tokenPositions[color][token].y = tokenPositions[color][token].targetY;
       }
-      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color]);
+      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], true);
     });
   });
 
@@ -188,29 +231,39 @@ function drawTokens() {
   }
 }
 
-function drawToken(x, y, color) {
+function drawToken(x, y, color, locked) {
   ctx.beginPath();
-  ctx.arc(x, y, cellSize / 3, 0, Math.PI * 2);
+  ctx.arc(x, y, cellSize / 2, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
-  ctx.strokeStyle = '#000';
+  ctx.strokeStyle = locked ? '#ff0000' : '#00ff00';
+  ctx.lineWidth = 3;
   ctx.stroke();
   ctx.fillStyle = '#fff';
   ctx.beginPath();
-  ctx.arc(x, y, cellSize / 6, 0, Math.PI * 2);
+  ctx.arc(x, y, cellSize / 4, 0, Math.PI * 2);
   ctx.fill();
 }
 
 function getPathPosition(index, color) {
   const path = [];
-  for (let i = 0; i < 13; i++) path.push({ x: 6, y: i });
-  for (let i = 0; i < 6; i++) path.push({ x: 7 + i, y: 12 });
-  for (let i = 0; i < 13; i++) path.push({ x: 12, y: 12 - i });
-  for (let i = 0; i < 6; i++) path.push({ x: 11 - i, y: 0 });
-  for (let i = 0; i < 13; i++) path.push({ x: 6, y: i });
-  for (let i = 0; i < 6; i++) path.push({ x: 5 - i, y: 12 });
-  for (let i = 0; i < 13; i++) path.push({ x: 0, y: 12 - i });
-  for (let i = 0; i < 6; i++) path.push({ x: 1 + i, y: 0 });
+  for (let i = 0; i < 2; i++) path.push({ x: 6, y: i });
+  for (let i = 0; i < 6; i++) path.push({ x: 6 + i, y: 2 });
+  for (let i = 0; i < 2; i++) path.push({ x: 12, y: 2 + i });
+  for (let i = 0; i < 6; i++) path.push({ x: 12, y: 4 + i });
+  for (let i = 0; i < 2; i++) path.push({ x: 12, y: 10 + i });
+  for (let i = 0; i < 6; i++) path.push({ x: 11 - i, y: 12 });
+  for (let i = 0; i < 2; i++) path.push({ x: 5 - i, y: 12 });
+  for (let i = 0; i < 6; i++) path.push({ x: 4, y: 11 - i });
+  for (let i = 0; i < 2; i++) path.push({ x: 4, y: 5 - i });
+  for (let i = 0; i < 6; i++) path.push({ x: 5 + i, y: 4 });
+  for (let i = 0; i < 2; i++) path.push({ x: 11 + i, y: 4 });
+  for (let i = 0; i < 6; i++) path.push({ x: 13, y: 5 + i });
+  for (let i = 0; i < 2; i++) path.push({ x: 13, y: 11 + i });
+  for (let i = 0; i < 6; i++) path.push({ x: 12 - i, y: 13 });
+  for (let i = 0; i < 2; i++) path.push({ x: 6 - i, y: 13 });
+  for (let i = 0; i < 6; i++) path.push({ x: 5, y: 12 - i });
+  for (let i = 0; i < 2; i++) path.push({ x: 5, y: 6 - i });
 
   const startIndices = { red: 0, green: 13, yellow: 26, blue: 39 };
   const adjustedIndex = (startIndices[color] + index) % 52;
