@@ -106,7 +106,7 @@ function checkValidMoves() {
 
 function moveToken(player, token) {
   const color = player.color;
-  const steps = moveQueue[0]; // Use the first move in the queue
+  const steps = moveQueue[0];
   let moved = false;
 
   if (boardState[color].locked.includes(token) && steps === 6) {
@@ -150,7 +150,7 @@ function moveToken(player, token) {
     tokenPositions[color][token].moving = true;
     tokenPositions[color][token].stepsLeft = 10;
     drawBoard();
-    moveQueue.shift(); // Remove the used move from the queue
+    moveQueue.shift();
   }
 
   highlightedTokens = [];
@@ -236,10 +236,10 @@ function highlightMovableTokens(tokens, color) {
       if (boardState[color].home.includes(token)) {
         const i = boardState[color].home.indexOf(token);
         let tx, ty;
-        if (color === 'red') { tx = 2 + (i % 2) * 2; ty = 2 + Math.floor(i / 2) * 2; }
-        else if (color === 'green') { tx = 11 + (i % 2) * 2; ty = 2 + Math.floor(i / 2) * 2; }
-        else if (color === 'blue') { tx = 2 + (i % 2) * 2; ty = 11 + Math.floor(i / 2) * 2; }
-        else { tx = 11 + (i % 2) * 2; ty = 11 + Math.floor(i / 2) * 2; }
+        if (color === 'red') { tx = 2 + (i % 2) * 2; ty = 11 + Math.floor(i / 2) * 2; }
+        else if (color === 'green') { tx = 2 + (i % 2) * 2; ty = 2 + Math.floor(i / 2) * 2; }
+        else if (color === 'blue') { tx = 11 + (i % 2) * 2; ty = 11 + Math.floor(i / 2) * 2; }
+        else { tx = 11 + (i % 2) * 2; ty = 2 + Math.floor(i / 2) * 2; }
         pos = { x: tx * cellSize + cellSize / 2, y: ty * cellSize + cellSize / 2 };
       } else {
         const pathToken = boardState[color].path.find(t => t.token === token);
