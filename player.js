@@ -42,16 +42,18 @@ function rollDice() {
       if (consecutiveSixes === 3) {
         rollQueue = rollQueue.slice(0, -3);
         consecutiveSixes = 0;
+        document.getElementById('move-message').textContent = 'Three 6s in a row! Turn skipped.';
+        setTimeout(nextTurn, 1000);
       } else {
+        document.getElementById('move-message').textContent = 'Rolled a 6! Roll again.';
         document.getElementById('roll-dice').disabled = false;
-        return;
       }
     } else {
       consecutiveSixes = 0;
+      moveQueue = [...rollQueue];
+      rollQueue = [];
+      checkValidMoves();
     }
-    moveQueue = [...rollQueue];
-    rollQueue = [];
-    checkValidMoves();
   }, 1000);
 }
 
@@ -73,38 +75,38 @@ function checkValidMoves() {
     });
   } else if (allUnlocked) {
     player.tokens.forEach(token => {
-      if (boardState[player.color].home.includes(token)) {
-        // Token is still in home but unlocked
-      } else {
-        const pathToken = boardState[player.color].path.find(t => t.token === token);
-        const homePathToken = boardState[player.color].homePath.find(t => t.token === token);
-        if (pathToken) {
-          const newIndex = pathToken.index + moveQueue[0];
-          if (newIndex < 51) {
-            validTokens.push(token);
-          } else if (newIndex <= 56) {
-            validTokens.push(token);
-          }
-        } else if (homePathToken) {
-          const newIndex = homePathToken.index + moveQueue[0];
-          if (newIndex <= 5) validTokens.push(token);
+      const pathToken = boardState[player.color].path.find(t => t.token === token);
+      const homePathToken = boardState[player.color].homePath.find(t => t.token === token);
+      if (pathToken) {
+        const newIndex = pathToken.index + moveQueue[0];
+        if (newIndex <= 56) {
+          validTokens.push(token);
+        }
+      } else if (homePathToken) {
+        const newIndex = homePathToken.index + moveQueue[0];
+        if (newIndex <= 5) {
+          validTokens.push(token);
         }
       }
     });
   }
 
   if (validTokens.length === 0) {
-    setTimeout(nextTurn, 500);
-  } else if (player.type === 'ai') {
-    setTimeout(() => aiMove(player, validTokens), 1000);
+    document.getElementById('move-message').textContent = `No valid moves for ${moveQueue[0]}.`;
+    moveQueue.shift();
+    setTimeout(() => checkValidMoves(), 1000);
   } else {
+    document.getElementById('move-message').textContent = `Select a token to move ${moveQueue[0]} spaces.`;
     highlightMovableTokens(validTokens, player.color);
+    if (player.type === 'ai') {
+      setTimeout(() => aiMove(player, validTokens), 1000);
+    }
   }
 }
 
 function moveToken(player, token) {
   const color = player.color;
-  const steps = moveQueue.shift();
+  const steps = moveQueue[0]; // Use the first move in the queue
   let moved = false;
 
   if (boardState[color].locked.includes(token) && steps === 6) {
@@ -112,6 +114,7 @@ function moveToken(player, token) {
     boardState[color].home = boardState[color].home.filter(t => t !== token);
     boardState[color].path.push({ token, index: 0 });
     moved = true;
+    document.getElementById('move-message').textContent = `Token ${token} unlocked!`;
   } else if (boardState[color].locked.length === 0) {
     let pathToken = boardState[color].path.find(t => t.token === token);
     let homePathToken = boardState[color].homePath.find(t => t.token === token);
@@ -138,6 +141,7 @@ function moveToken(player, token) {
         player.homeTokens++;
         checkWin(player);
         moved = true;
+        document.getElementById('move-message').textContent = `Token ${token} reached home!`;
       }
     }
   }
@@ -146,7 +150,11 @@ function moveToken(player, token) {
     tokenPositions[color][token].moving = true;
     tokenPositions[color][token].stepsLeft = 10;
     drawBoard();
+    moveQueue.shift(); // Remove the used move from the queue
   }
+
+  highlightedTokens = [];
+  drawBoard();
 
   if (moveQueue.length === 0) {
     setTimeout(nextTurn, 500);
@@ -164,7 +172,7 @@ function checkForCut(index, color) {
         boardState[p.color].path = boardState[p.color].path.filter(t => t.token !== pathToken.token);
         boardState[p.color].home.push(pathToken.token);
         boardState[p.color].locked.push(pathToken.token);
-        alert('Cut!');
+        document.getElementById('move-message').textContent = `${color} captured a ${p.color} token!`;
       }
     }
   });
@@ -196,6 +204,7 @@ function nextTurn() {
   do {
     currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
   } while (players[currentPlayerIndex].rank);
+  document.getElementById('move-message').textContent = '';
   updateTurn();
 }
 
@@ -212,10 +221,16 @@ function updateTurn() {
 }
 
 function highlightMovableTokens(tokens, color) {
-  canvas.addEventListener('click', function handler(e) {
+  highlightedTokens = tokens.map(token => `${color}-${token}`);
+  drawBoard();
+
+  canvas.removeEventListener('click', canvas.clickHandler);
+  canvas.clickHandler = (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    let tokenClicked = null;
+
     tokens.forEach(token => {
       let pos;
       if (boardState[color].home.includes(token)) {
@@ -238,9 +253,14 @@ function highlightMovableTokens(tokens, color) {
         }
       }
       if (pos && Math.hypot(x - pos.x, y - pos.y) < cellSize / 2) {
-        moveToken(players[currentPlayerIndex], token);
-        canvas.removeEventListener('click', handler);
+        tokenClicked = token;
       }
     });
-  });
+
+    if (tokenClicked !== null) {
+      moveToken(players[currentPlayerIndex], tokenClicked);
+      canvas.removeEventListener('click', canvas.clickHandler);
+    }
+  };
+  canvas.addEventListener('click', canvas.clickHandler);
 }
