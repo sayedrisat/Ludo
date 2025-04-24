@@ -4,6 +4,7 @@ const boardSize = 600;
 const cellSize = boardSize / 15;
 const colors = { red: '#ff0000', green: '#00ff00', yellow: '#ffff00', blue: '#0000ff' };
 const safeZones = [0, 13, 26, 39]; // Starting squares (marked with stars)
+const coloredSquares = { 5: 'yellow', 18: 'green', 31: 'blue', 44: 'red' }; // Colored squares before home paths
 
 let boardState = initializeBoard();
 let tokenPositions = initializeTokenPositions();
@@ -40,34 +41,35 @@ function drawBoard() {
   ctx.strokeStyle = '#000';
   ctx.strokeRect(0, 0, boardSize, boardSize);
 
-  // Draw home squares
-  drawHomeSquare(0, 0, colors.red);
-  drawHomeSquare(9 * cellSize, 0, colors.green);
-  drawHomeSquare(0, 9 * cellSize, colors.blue);
-  drawHomeSquare(9 * cellSize, 9 * cellSize, colors.yellow);
+  // Draw home squares (adjusted positions)
+  drawHomeSquare(0, 9 * cellSize, colors.red);    // Red: bottom-left
+  drawHomeSquare(0, 0, colors.green);             // Green: top-left
+  drawHomeSquare(9 * cellSize, 9 * cellSize, colors.blue); // Blue: bottom-right
+  drawHomeSquare(9 * cellSize, 0, colors.yellow); // Yellow: top-right
 
-  // Draw main path
+  // Draw main path (counterclockwise from Red start at bottom-left)
   const path = [];
-  for (let i = 0; i < 2; i++) path.push({ x: 6, y: i }); // Red start
-  for (let i = 0; i < 6; i++) path.push({ x: 6 + i, y: 2 }); // Right
-  for (let i = 0; i < 2; i++) path.push({ x: 12, y: 2 + i }); // Down
-  for (let i = 0; i < 6; i++) path.push({ x: 12, y: 4 + i }); // Down (Green start)
-  for (let i = 0; i < 2; i++) path.push({ x: 12, y: 10 + i }); // Down
-  for (let i = 0; i < 6; i++) path.push({ x: 11 - i, y: 12 }); // Left
-  for (let i = 0; i < 2; i++) path.push({ x: 5 - i, y: 12 }); // Left
-  for (let i = 0; i < 6; i++) path.push({ x: 4, y: 11 - i }); // Up (Yellow start)
-  for (let i = 0; i < 2; i++) path.push({ x: 4, y: 5 - i }); // Up
+  // Bottom-left to top-left (Red start)
+  for (let i = 0; i < 2; i++) path.push({ x: 6, y: 13 - i }); // Up
+  for (let i = 0; i < 6; i++) path.push({ x: 5, y: 11 - i }); // Up
+  for (let i = 0; i < 2; i++) path.push({ x: 5, y: 5 - i }); // Up
+  // Top-left to top-right (Green start)
   for (let i = 0; i < 6; i++) path.push({ x: 5 + i, y: 4 }); // Right
   for (let i = 0; i < 2; i++) path.push({ x: 11 + i, y: 4 }); // Right
-  for (let i = 0; i < 6; i++) path.push({ x: 13, y: 5 + i }); // Down (Blue start)
+  for (let i = 0; i < 6; i++) path.push({ x: 13, y: 5 + i }); // Down
+  // Top-right to bottom-right (Yellow start)
   for (let i = 0; i < 2; i++) path.push({ x: 13, y: 11 + i }); // Down
   for (let i = 0; i < 6; i++) path.push({ x: 12 - i, y: 13 }); // Left
   for (let i = 0; i < 2; i++) path.push({ x: 6 - i, y: 13 }); // Left
-  for (let i = 0; i < 6; i++) path.push({ x: 5, y: 12 - i }); // Up
-  for (let i = 0; i < 2; i++) path.push({ x: 5, y: 6 - i }); // Up
+  // Bottom-right to bottom-left (Blue start)
+  for (let i = 0; i < 6; i++) path.push({ x: 4, y: 12 - i }); // Up
+  for (let i = 0; i < 2; i++) path.push({ x: 4, y: 6 - i }); // Up
+  for (let i = 0; i < 6; i++) path.push({ x: 5 + i, y: 2 }); // Right
+  for (let i = 0; i < 2; i++) path.push({ x: 11 + i, y: 2 }); // Right
+  for (let i = 0; i < 6; i++) path.push({ x: 12, y: 3 + i }); // Down
 
   path.forEach((pos, i) => {
-    ctx.fillStyle = safeZones.includes(i) ? '#ddd' : '#fff';
+    ctx.fillStyle = coloredSquares[i] ? colors[coloredSquares[i]] : '#fff';
     ctx.fillRect(pos.x * cellSize, pos.y * cellSize, cellSize, cellSize);
     ctx.strokeStyle = '#000';
     ctx.strokeRect(pos.x * cellSize, pos.y * cellSize, cellSize, cellSize);
@@ -80,13 +82,16 @@ function drawBoard() {
     }
   });
 
-  // Draw home paths
-  drawHomePath(6, 1, colors.red, 'vertical');
-  drawHomePath(8, 6, colors.green, 'horizontal');
-  drawHomePath(6, 8, colors.yellow, 'vertical');
-  drawHomePath(1, 6, colors.blue, 'horizontal');
+  // Draw arrows on the path
+  drawArrows(path);
 
-  // Draw center home triangle
+  // Draw home paths (adjusted orientations)
+  drawHomePath(6, 8, colors.red, 'vertical');    // Red: from bottom
+  drawHomePath(1, 6, colors.green, 'horizontal'); // Green: from left
+  drawHomePath(8, 6, colors.blue, 'horizontal');  // Blue: from right
+  drawHomePath(6, 1, colors.yellow, 'vertical');  // Yellow: from top
+
+  // Draw center home triangle (adjusted colors)
   drawCenterHome();
 
   // Draw tokens
@@ -132,39 +137,52 @@ function drawHomePath(x, y, color, direction) {
 function drawCenterHome() {
   ctx.fillStyle = colors.red;
   ctx.beginPath();
-  ctx.moveTo(6 * cellSize, 6 * cellSize);
+  ctx.moveTo(6 * cellSize, 8 * cellSize);
   ctx.lineTo(7 * cellSize, 7 * cellSize);
-  ctx.lineTo(6 * cellSize, 7 * cellSize);
+  ctx.lineTo(8 * cellSize, 8 * cellSize);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = colors.green;
   ctx.beginPath();
-  ctx.moveTo(7 * cellSize, 7 * cellSize);
-  ctx.lineTo(8 * cellSize, 6 * cellSize);
-  ctx.lineTo(8 * cellSize, 7 * cellSize);
+  ctx.moveTo(6 * cellSize, 6 * cellSize);
+  ctx.lineTo(7 * cellSize, 7 * cellSize);
+  ctx.lineTo(6 * cellSize, 8 * cellSize);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = colors.yellow;
   ctx.beginPath();
-  ctx.moveTo(7 * cellSize, 7 * cellSize);
-  ctx.lineTo(8 * cellSize, 8 * cellSize);
-  ctx.lineTo(7 * cellSize, 8 * cellSize);
+  ctx.moveTo(6 * cellSize, 6 * cellSize);
+  ctx.lineTo(7 * cellSize, 7 * cellSize);
+  ctx.lineTo(8 * cellSize, 6 * cellSize);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = colors.blue;
   ctx.beginPath();
-  ctx.moveTo(7 * cellSize, 7 * cellSize);
-  ctx.lineTo(6 * cellSize, 8 * cellSize);
-  ctx.lineTo(7 * cellSize, 8 * cellSize);
+  ctx.moveTo(8 * cellSize, 6 * cellSize);
+  ctx.lineTo(7 * cellSize, 7 * cellSize);
+  ctx.lineTo(8 * cellSize, 8 * cellSize);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
+}
+
+function drawArrows(path) {
+  const arrowPositions = [6, 19, 32, 45]; // Positions just after each colored square
+  arrowPositions.forEach((posIndex, i) => {
+    const pos = path[posIndex];
+    ctx.fillStyle = '#000';
+    ctx.font = `${cellSize / 2}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const directions = ['↑', '→', '↓', '←']; // Red (up), Green (right), Blue (down), Yellow (left)
+    ctx.fillText(directions[i], pos.x * cellSize + cellSize / 2, pos.y * cellSize + cellSize / 2);
+  });
 }
 
 function drawTokens() {
@@ -172,13 +190,13 @@ function drawTokens() {
     // Draw tokens in home
     boardState[color].home.forEach((token, i) => {
       let x, y;
-      if (color === 'red') { x = 2 + (i % 2) * 2; y = 2 + Math.floor(i / 2) * 2; }
-      else if (color === 'green') { x = 11 + (i % 2) * 2; y = 2 + Math.floor(i / 2) * 2; }
-      else if (color === 'blue') { x = 2 + (i % 2) * 2; y = 11 + Math.floor(i / 2) * 2; }
-      else { x = 11 + (i % 2) * 2; y = 11 + Math.floor(i / 2) * 2; }
+      if (color === 'red') { x = 2 + (i % 2) * 2; y = 11 + Math.floor(i / 2) * 2; } // bottom-left
+      else if (color === 'green') { x = 2 + (i % 2) * 2; y = 2 + Math.floor(i / 2) * 2; } // top-left
+      else if (color === 'blue') { x = 11 + (i % 2) * 2; y = 11 + Math.floor(i / 2) * 2; } // bottom-right
+      else { x = 11 + (i % 2) * 2; y = 2 + Math.floor(i / 2) * 2; } // top-right
       tokenPositions[color][token].x = x * cellSize + cellSize / 2;
       tokenPositions[color][token].y = y * cellSize + cellSize / 2;
-      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], boardState[color].locked.includes(token), highlightedTokens.includes(`${color}-${token}`));
+      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], highlightedTokens.includes(`${color}-${token}`));
     });
 
     // Draw tokens on path
@@ -190,7 +208,7 @@ function drawTokens() {
         tokenPositions[color][token].x = tokenPositions[color][token].targetX;
         tokenPositions[color][token].y = tokenPositions[color][token].targetY;
       }
-      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], false, highlightedTokens.includes(`${color}-${token}`));
+      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], highlightedTokens.includes(`${color}-${token}`));
     });
 
     // Draw tokens in home path
@@ -202,7 +220,7 @@ function drawTokens() {
         tokenPositions[color][token].x = tokenPositions[color][token].targetX;
         tokenPositions[color][token].y = tokenPositions[color][token].targetY;
       }
-      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], true, highlightedTokens.includes(`${color}-${token}`));
+      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], highlightedTokens.includes(`${color}-${token}`));
     });
   });
 
@@ -232,18 +250,14 @@ function drawTokens() {
   }
 }
 
-function drawToken(x, y, color, locked, highlighted) {
+function drawToken(x, y, color, highlighted) {
   ctx.beginPath();
   ctx.arc(x, y, cellSize / 2, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
-  ctx.strokeStyle = locked ? '#ff0000' : '#00ff00';
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
   ctx.stroke();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(x, y, cellSize / 4, 0, Math.PI * 2);
-  ctx.fill();
   if (highlighted) {
     ctx.strokeStyle = '#ffd700';
     ctx.lineWidth = 5;
@@ -253,23 +267,24 @@ function drawToken(x, y, color, locked, highlighted) {
 
 function getPathPosition(index, color) {
   const path = [];
-  for (let i = 0; i < 2; i++) path.push({ x: 6, y: i });
-  for (let i = 0; i < 6; i++) path.push({ x: 6 + i, y: 2 });
-  for (let i = 0; i < 2; i++) path.push({ x: 12, y: 2 + i });
-  for (let i = 0; i < 6; i++) path.push({ x: 12, y: 4 + i });
-  for (let i = 0; i < 2; i++) path.push({ x: 12, y: 10 + i });
-  for (let i = 0; i < 6; i++) path.push({ x: 11 - i, y: 12 });
-  for (let i = 0; i < 2; i++) path.push({ x: 5 - i, y: 12 });
-  for (let i = 0; i < 6; i++) path.push({ x: 4, y: 11 - i });
-  for (let i = 0; i < 2; i++) path.push({ x: 4, y: 5 - i });
+  // Bottom-left to top-left (Red start)
+  for (let i = 0; i < 2; i++) path.push({ x: 6, y: 13 - i });
+  for (let i = 0; i < 6; i++) path.push({ x: 5, y: 11 - i });
+  for (let i = 0; i < 2; i++) path.push({ x: 5, y: 5 - i });
+  // Top-left to top-right (Green start)
   for (let i = 0; i < 6; i++) path.push({ x: 5 + i, y: 4 });
   for (let i = 0; i < 2; i++) path.push({ x: 11 + i, y: 4 });
   for (let i = 0; i < 6; i++) path.push({ x: 13, y: 5 + i });
+  // Top-right to bottom-right (Yellow start)
   for (let i = 0; i < 2; i++) path.push({ x: 13, y: 11 + i });
   for (let i = 0; i < 6; i++) path.push({ x: 12 - i, y: 13 });
   for (let i = 0; i < 2; i++) path.push({ x: 6 - i, y: 13 });
-  for (let i = 0; i < 6; i++) path.push({ x: 5, y: 12 - i });
-  for (let i = 0; i < 2; i++) path.push({ x: 5, y: 6 - i });
+  // Bottom-right to bottom-left (Blue start)
+  for (let i = 0; i < 6; i++) path.push({ x: 4, y: 12 - i });
+  for (let i = 0; i < 2; i++) path.push({ x: 4, y: 6 - i });
+  for (let i = 0; i < 6; i++) path.push({ x: 5 + i, y: 2 });
+  for (let i = 0; i < 2; i++) path.push({ x: 11 + i, y: 2 });
+  for (let i = 0; i < 6; i++) path.push({ x: 12, y: 3 + i });
 
   const startIndices = { red: 0, green: 13, yellow: 26, blue: 39 };
   const adjustedIndex = (startIndices[color] + index) % 52;
@@ -278,10 +293,10 @@ function getPathPosition(index, color) {
 
 function getHomePathPosition(index, color) {
   const homePaths = {
-    red: Array.from({ length: 5 }, (_, i) => ({ x: 6, y: 1 + i })),
-    green: Array.from({ length: 5 }, (_, i) => ({ x: 8 + i, y: 6 })),
-    yellow: Array.from({ length: 5 }, (_, i) => ({ x: 6, y: 8 + i })),
-    blue: Array.from({ length: 5 }, (_, i) => ({ x: 1 + i, y: 6 }))
+    red: Array.from({ length: 5 }, (_, i) => ({ x: 6, y: 8 + i })), // from bottom
+    green: Array.from({ length: 5 }, (_, i) => ({ x: 1 + i, y: 6 })), // from left
+    yellow: Array.from({ length: 5 }, (_, i) => ({ x: 6, y: 1 + i })), // from top
+    blue: Array.from({ length: 5 }, (_, i) => ({ x: 8 + i, y: 6 })) // from right
   };
   return homePaths[color][index];
 }
