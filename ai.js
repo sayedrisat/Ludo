@@ -1,11 +1,9 @@
 function aiMove(player, validTokens) {
   let chosenToken = null;
 
-  // If can unlock, prioritize unlocking
   if (boardState[player.color].locked.length > 0 && moveQueue[0] === 6) {
     chosenToken = validTokens[0];
   } else if (boardState[player.color].locked.length === 0) {
-    // Prioritize cutting opponent's token
     validTokens.forEach(token => {
       let newIndex;
       const pathToken = boardState[player.color].path.find(t => t.token === token);
@@ -24,7 +22,6 @@ function aiMove(player, validTokens) {
       }
     });
 
-    // If no cut possible, move furthest token or closest to home
     if (!chosenToken) {
       let maxIndex = -1;
       let closestToHome = 6;
@@ -52,9 +49,11 @@ function aiMove(player, validTokens) {
     }
   }
 
-  if (chosenToken) {
+  if (chosenToken !== null) {
     moveToken(player, chosenToken);
   } else {
-    setTimeout(nextTurn, 500);
+    document.getElementById('move-message').textContent = `AI: No valid moves for ${moveQueue[0]}.`;
+    moveQueue.shift();
+    setTimeout(() => checkValidMoves(), 1000);
   }
 }
