@@ -7,6 +7,7 @@ const safeZones = [0, 13, 26, 39]; // Starting squares (marked with stars)
 
 let boardState = initializeBoard();
 let tokenPositions = initializeTokenPositions();
+let highlightedTokens = [];
 
 function initializeBoard() {
   const board = {
@@ -177,7 +178,7 @@ function drawTokens() {
       else { x = 11 + (i % 2) * 2; y = 11 + Math.floor(i / 2) * 2; }
       tokenPositions[color][token].x = x * cellSize + cellSize / 2;
       tokenPositions[color][token].y = y * cellSize + cellSize / 2;
-      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], boardState[color].locked.includes(token));
+      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], boardState[color].locked.includes(token), highlightedTokens.includes(`${color}-${token}`));
     });
 
     // Draw tokens on path
@@ -189,7 +190,7 @@ function drawTokens() {
         tokenPositions[color][token].x = tokenPositions[color][token].targetX;
         tokenPositions[color][token].y = tokenPositions[color][token].targetY;
       }
-      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], false);
+      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], false, highlightedTokens.includes(`${color}-${token}`));
     });
 
     // Draw tokens in home path
@@ -201,7 +202,7 @@ function drawTokens() {
         tokenPositions[color][token].x = tokenPositions[color][token].targetX;
         tokenPositions[color][token].y = tokenPositions[color][token].targetY;
       }
-      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], true);
+      drawToken(tokenPositions[color][token].x, tokenPositions[color][token].y, colors[color], true, highlightedTokens.includes(`${color}-${token}`));
     });
   });
 
@@ -231,7 +232,7 @@ function drawTokens() {
   }
 }
 
-function drawToken(x, y, color, locked) {
+function drawToken(x, y, color, locked, highlighted) {
   ctx.beginPath();
   ctx.arc(x, y, cellSize / 2, 0, Math.PI * 2);
   ctx.fillStyle = color;
@@ -243,6 +244,11 @@ function drawToken(x, y, color, locked) {
   ctx.beginPath();
   ctx.arc(x, y, cellSize / 4, 0, Math.PI * 2);
   ctx.fill();
+  if (highlighted) {
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 5;
+    ctx.stroke();
+  }
 }
 
 function getPathPosition(index, color) {
